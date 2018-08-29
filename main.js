@@ -115,8 +115,8 @@ class Coin
 	{
 		this.pos = pos;
 		this.basePos = basePos;
-		this.wobble = wobble;
-	}
+		this.wobble = wobbl;
+e	}
 
 	get type() { return "coin"; }
 
@@ -293,4 +293,122 @@ Lava.prototype.update = function(time, state)
 	} else {
 		return new Lava(this.pos, this.speed.times(-1));
 	}
+}
+
+//
+const wobbleSpeed = 8; wobbleDist = 0.7;
+
+Coin.prototype.update = function(time)
+{
+	let wobble = this.wobble + time * wobbleSpeed;
+	let wobblePos = Math.sin(wobble) + time * wobbleSpeed;
+	return new Coin(this.basePos.plus(new Vec(0, wobblePos)), this.basePos, wobble);
+};
+
+
+const playerXSpeed = 7;
+const gravity = 30;
+const jumpSpeed = 17;
+
+Player.prototype.update = function(time, save, keys)
+{
+	let xSpeed = 0;
+	if(keys.arrowLeft) xSpeed -= playerXSpeed;
+	if(keys.arrowRight) xSpeed += playerXSpeed;
+
+	let pos = this.pos;
+
+	let movedX = pos.plus(new Vec(xSpeed * time, 0));
+	if(!state.level.touches(movedX, this.size, "wall")) {
+		pos = movedX;
+	}
+
+	let ySpeed = this.speed.y + time * gravity;
+	let movedY = pos.plus(new Vec(0, ySpeed * time));
+
+	if(!state.level.touches(movedY, this.size, "wall")) {
+		pos = movedY;
+	} else if(keys.ArrowUp && ySpeed > 0) {
+		ySpeed = -jumpSpeed;
+	} else {
+		ySpeed = 0;
+	}
+
+	return new Player( pos, new Vec(xSpeed, ySpeed) );
+}
+
+
+// 
+function trackKeys(keys)
+{
+	let down = Object.create(null);
+
+	function track(event) {
+		if(keys.includes(event.key)) {
+			down[event.key] = event.type == "keydown";
+			event.preventDefault();
+		}
+	}
+
+	window.addEventHandler("keydown", track);
+	window.addEventHandler("keyup", track);
+
+	return down;
+}
+
+const arrowKeys = trackKeys(["ArrowLeft", "ArrowRight", "ArrowUp"]);
+
+function runAnimation(frameFunc)
+{
+	let lastTime = null;
+	function frame(time) {
+		if(lastTime != null) {
+			let timeStep = Math.min(time - lastTime, 100)/100;
+			if(frameFunc(timeStep) === false) return;
+		}
+
+		lastTime = time;
+		requestAnimationFrame(frame);
+	}
+
+	requestAnimationFrame(frame);
+}
+
+function runLevel(level, Display)
+{
+	let display = new Display(document.body, level);
+
+	let state = State.start(level);
+
+	let ending = 1;
+
+	return new Promise(resolve => {
+		runAnimation(time => {
+			state = state.update(time, arrowKeys);
+
+			display.syncState(state);
+			if(state.status == "playing") {
+				return true;
+			} else if(ending > 0) {
+				ending -= time;
+				return true;
+			} else {
+				display.clear();
+				resolve(state.status);
+				return false;
+			}
+		});
+	});
+}
+
+
+async function runGame(plan, Display)
+{
+	for (let level = 0; level < plan.length) {
+		let status = await runLevel(new Level(plan[level]), Display);
+
+		if(status == "won") level++;
+	}
+
+	console.log("You've won !");
 }
