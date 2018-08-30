@@ -247,6 +247,9 @@ Level.prototype.touches = function(pos, size, type)
 	return false;
 }
 
+//The state update method uses touches to fgure out whether the player is
+//touching lava
+
 State.prototype.update = function(time, keys)
 {
 	let actors = this.actors.map(actor => actor.update(time, this, keys));
@@ -257,11 +260,24 @@ State.prototype.update = function(time, keys)
 
 	let player = newState.player;
 }
+/*
+* The method is passed a time step and a data structure that tells it which
+* keys are being held down. The frst thing it does is call the update method on
+* all actors, producing an array of updated actors. The actors also get the time
+* step, the keys, and the state, so that they can base their update on those. Only
+* the player will actually read keys, since that’s the only actor that’s controlled
+* by the keyboard
+*/
 
 
+/*
+*	Overlap between actors is detected with the overlap function. It takes two
+* actor objects and returns true when they touch—which is the case when they
+*  overlap both along the x-axis and along the y-axis
+ */
 function overlap(actor1, actor2)
 {
-	return actor1.pos.x + actor1.size,x > actor2.pos.x && 
+	return actor1.pos.x + actor1.size.x > actor2.pos.x && 
 	       actor1.pos.x < actor2.pos.x + actor2.size.x &&
 	       actor1.pos.y + actor1.size.y > actor2.pos.y &&
 		   actor1.pos.y < actor2.pos.y + actor2.size.y;
